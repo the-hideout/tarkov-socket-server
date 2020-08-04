@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/kokarn/tarkov-socket-server/issues"
   },
-  "homepage": "https://github.com/kokarn/tarkov-socket-server#readme"
+  "homepage": "https://github.com/kokarn/tarkov-socket-server#readme",
+  "dependencies": {
+    "ws": "^7.3.1"
+  }
 }
