@@ -4,6 +4,8 @@ const wss = new WebSocket.Server({
     port: process.env.PORT || 8080,
 });
 
+const pingMessage = JSON.stringify({type: 'ping'})
+
 const sendCommand = (sessionID, command) => {
     wss.clients.forEach((client) => {        
         if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID ) {
@@ -17,13 +19,14 @@ const sendCommand = (sessionID, command) => {
 
 const pingInterval = setInterval(() => {
     console.log(`active clients: ${wss.clients.size}`);
+    
     wss.clients.forEach((client) => {
         if (client.isAlive === false) {
             return client.terminate();
         }
 
         client.isAlive = false;
-        client.send(JSON.stringify({type: 'ping'}));
+        client.send(pingMessage);
     });
 }, 5000);
  
