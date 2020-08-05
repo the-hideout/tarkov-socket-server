@@ -16,6 +16,7 @@ const sendCommand = (sessionID, command) => {
 };
 
 const pingInterval = setInterval(() => {
+    console.log(`active clients: ${wss.clients.size}`);
     wss.clients.forEach((client) => {
         if (client.isAlive === false) {
             return client.terminate();
@@ -28,11 +29,9 @@ const pingInterval = setInterval(() => {
  
 wss.on('connection', (ws) => {
     ws.isAlive = true;
-    console.log(`active clients: ${wss.clients.size}`);
     
     ws.on('message', (rawMessage) => {
         const message = JSON.parse(rawMessage);
-        
         
         if(message.type === 'pong'){
             ws.isAlive = true;
@@ -56,6 +55,6 @@ wss.on('connection', (ws) => {
     });
 });
 
-wss.on('close', function close() {
+wss.on('close', () => {
     clearInterval(pingInterval);
 });
