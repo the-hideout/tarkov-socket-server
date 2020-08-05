@@ -28,6 +28,7 @@ const pingInterval = setInterval(() => {
  
 wss.on('connection', (ws) => {
     ws.isAlive = true;
+    console.log(`active clients: ${wss.clients.size}`);
     
     ws.on('message', (rawMessage) => {
         const message = JSON.parse(rawMessage);
