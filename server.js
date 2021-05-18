@@ -7,7 +7,7 @@ const wss = new WebSocket.Server({
 const pingMessage = JSON.stringify({type: 'ping'})
 
 const sendCommand = (sessionID, command) => {
-    wss.clients.forEach((client) => {        
+    wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID ) {
             client.send(JSON.stringify({
                 type: 'command',
@@ -17,9 +17,20 @@ const sendCommand = (sessionID, command) => {
     });
 };
 
+const sendMessage = (sessionID, type, data) => {
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID ) {
+            client.send(JSON.stringify({
+                type: type,
+                data: data,
+            }));
+        }
+    });
+};
+
 const pingInterval = setInterval(() => {
     console.log(`active clients: ${wss.clients.size}`);
-    
+
     wss.clients.forEach((client) => {
         if (client.isAlive === false) {
             return client.terminate();
@@ -29,30 +40,40 @@ const pingInterval = setInterval(() => {
         client.send(pingMessage);
     });
 }, 5000);
- 
+
 wss.on('connection', (ws) => {
     ws.isAlive = true;
-    
+
     ws.on('message', (rawMessage) => {
         const message = JSON.parse(rawMessage);
-        
+
+        console.log(message);
+
         if(message.type === 'pong'){
             ws.isAlive = true;
-            
+
             return true;
         }
-        
-        console.log(message);
-        
+
+        if(message?.type !== 'debug'){
+            console.log(message);
+        }
+
         if(message.type === 'connect'){
             ws.sessionID = message.sessionID;
-            
+
             return true;
         }
-        
+
         if(message.type === 'command'){
             sendCommand(message.sessionID, message.data);
-            
+
+            return true;
+        }
+
+        if(message.type === 'debug'){
+            sendMessage(message.sessionID, 'debug', message.data);
+
             return true;
         }
     });
