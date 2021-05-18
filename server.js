@@ -49,8 +49,6 @@ wss.on('connection', (ws) => {
     ws.on('message', (rawMessage) => {
         const message = JSON.parse(rawMessage);
 
-        console.log(message);
-
         if(message.type === 'pong'){
             ws.isAlive = true;
 
