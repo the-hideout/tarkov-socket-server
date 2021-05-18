@@ -4,7 +4,9 @@ const wss = new WebSocket.Server({
     port: process.env.PORT || 8080,
 });
 
-const pingMessage = JSON.stringify({type: 'ping'})
+const pingMessage = JSON.stringify({
+    type: 'ping',
+});
 
 const sendCommand = (sessionID, command) => {
     wss.clients.forEach((client) => {
