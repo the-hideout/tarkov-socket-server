@@ -41,7 +41,7 @@ const pingInterval = setInterval(() => {
         client.isAlive = false;
         client.send(pingMessage);
     });
-}, 5000);
+}, 30000);
 
 wss.on('connection', (ws) => {
     ws.isAlive = true;
