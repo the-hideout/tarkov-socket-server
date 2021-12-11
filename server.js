@@ -10,10 +10,11 @@ const pingMessage = JSON.stringify({
 
 const sendCommand = (sessionID, command) => {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID ) {
+        if (!client.sessionID) {
             client.send(JSON.stringify({
                 type: 'command',
                 data: command,
+                scanner: sessionID
             }));
         }
     });
@@ -35,6 +36,7 @@ const pingInterval = setInterval(() => {
 
     wss.clients.forEach((client) => {
         if (client.isAlive === false) {
+            console.log(`terminating ${client.sessionID}`);
             return client.terminate();
         }
 
