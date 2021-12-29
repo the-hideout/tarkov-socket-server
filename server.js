@@ -1,3 +1,4 @@
+require('dotenv').config();
 const WebSocket = require('ws');
 
 const wss = new WebSocket.Server({
@@ -10,10 +11,10 @@ const pingMessage = JSON.stringify({
 
 const sendCommand = (sessionID, command) => {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID ) {
+        if (client.readyState === WebSocket.OPEN && client.role === 'scanner' && client.sessionID === sessionID) {
             client.send(JSON.stringify({
                 type: 'command',
-                data: command,
+                data: command
             }));
         }
     });
@@ -21,7 +22,7 @@ const sendCommand = (sessionID, command) => {
 
 const sendMessage = (sessionID, type, data) => {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID ) {
+        if (client.readyState === WebSocket.OPEN && client.role === 'listener' && client.sessionID === sessionID ) {
             client.send(JSON.stringify({
                 type: type,
                 data: data,
@@ -35,6 +36,7 @@ const pingInterval = setInterval(() => {
 
     wss.clients.forEach((client) => {
         if (client.isAlive === false) {
+            console.log(`terminating ${client.sessionID}`);
             return client.terminate();
         }
 
@@ -61,11 +63,15 @@ wss.on('connection', (ws) => {
 
         if(message.type === 'connect'){
             ws.sessionID = message.sessionID;
-
+            ws.role = message.role;
             return true;
         }
 
         if(message.type === 'command'){
+            if (message.password != process.env.WS_PASSWORD) {
+                sendMessage(ws.sessionID, 'debug', 'Access denied');
+                return false;
+            }
             sendCommand(message.sessionID, message.data);
 
             return true;
