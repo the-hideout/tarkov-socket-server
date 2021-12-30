@@ -11,7 +11,8 @@ const pingMessage = JSON.stringify({
 
 const sendCommand = (sessionID, command) => {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.role === 'scanner' && client.sessionID === sessionID) {
+        // if (client.readyState === WebSocket.OPEN && client.role === 'scanner' && client.sessionID === sessionID) {
+        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID) {
             client.send(JSON.stringify({
                 type: 'command',
                 data: command
@@ -22,7 +23,8 @@ const sendCommand = (sessionID, command) => {
 
 const sendMessage = (sessionID, type, data) => {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.role === 'listener' && client.sessionID === sessionID ) {
+        // if (client.readyState === WebSocket.OPEN && client.role === 'listener' && client.sessionID === sessionID ) {
+        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID ) {
             client.send(JSON.stringify({
                 type: type,
                 data: data,
