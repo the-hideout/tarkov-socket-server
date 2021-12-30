@@ -68,10 +68,10 @@ wss.on('connection', (ws) => {
         }
 
         if(message.type === 'command'){
-            if (message.password != process.env.WS_PASSWORD) {
-                sendMessage(ws.sessionID, 'debug', 'Access denied');
-                return false;
-            }
+            // if (message.password != process.env.WS_PASSWORD) {
+            //     sendMessage(ws.sessionID, 'debug', 'Access denied');
+            //     return false;
+            // }
             sendCommand(message.sessionID, message.data);
 
             return true;
