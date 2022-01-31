@@ -11,8 +11,7 @@ const pingMessage = JSON.stringify({
 
 const sendCommand = (sessionID, command) => {
     wss.clients.forEach((client) => {
-        // if (client.readyState === WebSocket.OPEN && client.role === 'scanner' && client.sessionID === sessionID) {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID) {
+        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && (client.role === 'remote' || client.role === 'scanner')) {
             client.send(JSON.stringify({
                 type: 'command',
                 data: command
@@ -23,8 +22,7 @@ const sendCommand = (sessionID, command) => {
 
 const sendMessage = (sessionID, type, data) => {
     wss.clients.forEach((client) => {
-        // if (client.readyState === WebSocket.OPEN && client.role === 'listener' && client.sessionID === sessionID ) {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID ) {
+        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && (client.role === 'remote' || client.role === 'listener') ) {
             client.send(JSON.stringify({
                 type: type,
                 data: data,
@@ -66,7 +64,11 @@ wss.on('connection', (ws) => {
 
         if(message.type === 'connect'){
             ws.sessionID = message.sessionID;
-            ws.role = message.role;
+            if (typeof message.role !== 'undefined') {
+                ws.role = message.role;
+            } else {
+                ws.role = 'remote';
+            }
             if (message.role === 'listener') {
                 let values = false;
                 wss.clients.forEach((client) => {
@@ -86,10 +88,10 @@ wss.on('connection', (ws) => {
         }
 
         if(message.type === 'command'){
-            // if (message.password != process.env.WS_PASSWORD) {
-            //     sendMessage(ws.sessionID, 'debug', 'Access denied');
-            //     return false;
-            // }
+            if (ws.role !== 'remote' && message.password != process.env.WS_PASSWORD) {
+                sendMessage(ws.sessionID, 'debug', 'Access denied');
+                return false;
+            }
             sendCommand(message.sessionID, message.data);
 
             return true;
