@@ -22,7 +22,7 @@ const sendCommand = (sessionID, command) => {
 
 const sendMessage = (sessionID, type, data) => {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && (client.role === 'remote' || client.role === 'scanner') ) {
+        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && (client.role === 'remote' || client.role === 'listener') ) {
             client.send(JSON.stringify({
                 type: type,
                 data: data,
