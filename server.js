@@ -88,23 +88,24 @@ wss.on('connection', (ws) => {
             return;
         }
 
-        if (!ws.sessionID) {
+        const sessionID = message.sessionID || ws.sessionID;
+        if (!sessionID) {
             console.log('No session ID set, dropping message', message);
             return;
         }
 
         if (message.type === 'command') {
             if (ws.role !== 'remote' && message.password != process.env.WS_PASSWORD) {
-                sendMessage(ws.sessionID, 'debug', 'Access denied');
+                sendMessage(sessionID, 'debug', 'Access denied');
                 return;
             }
-            sendCommand(ws.sessionID, message.data);
+            sendCommand(sessionID, message.data);
 
             return;
         }
 
         if (message.type === 'debug') {
-            sendMessage(ws.sessionID, 'debug', message.data);
+            sendMessage(sessionID, 'debug', message.data);
 
             return;
         }
@@ -119,7 +120,7 @@ wss.on('connection', (ws) => {
                 values = ws.settings;
             } else {
                 wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN && client.sessionID === ws.sessionID && client.role === 'scanner' ) {
+                    if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'scanner' ) {
                         client.settings = {
                             ...client.settings,
                             ...message.data
@@ -129,17 +130,17 @@ wss.on('connection', (ws) => {
                 });
             }
             if (!values) {
-                console.log(`Could not find ${ws.sessionID} scanner to set values`);
+                console.log(`Could not find ${sessionID} scanner to set values`);
                 return;
             }
-            console.log(`${ws.sessionID} (${ws.role}): set values ${JSON.stringify(message.data, null, 4)}`);
+            console.log(`${sessionID} (${ws.role}): set values ${JSON.stringify(message.data, null, 4)}`);
             wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN && client.sessionID === ws.sessionID && client.role === 'listener' ) {
+                if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'listener' ) {
                     client.send(JSON.stringify({
                         type: 'scannerValues',
                         data: values
                     }));
-                    console.log(`sent scannerValues message to ${ws.sessionID} listener`);
+                    console.log(`sent scannerValues message to ${sessionID} listener`);
                 }
             });
 
@@ -152,7 +153,7 @@ wss.on('connection', (ws) => {
                 theValue = ws.settings[message.data.name];
             } else {
                 wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN && client.sessionID === ws.sessionID && client.role === 'scanner' ) {
+                    if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'scanner' ) {
                         theValue = client.settings[message.data.name];
                     }
                 });
@@ -161,7 +162,7 @@ wss.on('connection', (ws) => {
                 type: 'scannerValue',
                 data: theValue,
             }));
-            console.log(`${ws.sessionID} (${ws.role}): sent ${message.data.name} value ${theValue}`);
+            console.log(`${sessionID} (${ws.role}): sent ${message.data.name} value ${theValue}`);
 
             return;
         }
@@ -172,7 +173,7 @@ wss.on('connection', (ws) => {
                 theValues = ws.settings;
             } else {
                 wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN && client.sessionID === ws.sessionID && client.role === 'scanner' ) {
+                    if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'scanner' ) {
                         theValues = client.settings;
                     }
                 });
@@ -181,14 +182,14 @@ wss.on('connection', (ws) => {
                 type: 'scannerValues',
                 data: theValues,
             }));
-            console.log(`${ws.sessionID} (${ws.role}): sent values ${theValues}`);
+            console.log(`${sessionID} (${ws.role}): sent values ${theValues}`);
 
             return;
         }
 
         if (message.type === 'logHistory') {
             wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN && client.sessionID === ws.sessionID && client.role === 'listener' ) {
+                if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'listener' ) {
                     client.send(JSON.stringify({
                         type: 'logHistory',
                         data: message.data
