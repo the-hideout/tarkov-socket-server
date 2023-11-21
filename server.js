@@ -203,3 +203,7 @@ wss.on('connection', (ws) => {
 wss.on('close', () => {
     clearInterval(pingInterval);
 });
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception', error.stack);
+}); 
