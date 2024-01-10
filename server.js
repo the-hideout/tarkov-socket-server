@@ -200,6 +200,10 @@ wss.on('connection', (ws) => {
     });
 });
 
+wss.on('error', error => {
+    console.error('Server error', error);
+});
+
 wss.on('close', () => {
     clearInterval(pingInterval);
 });
