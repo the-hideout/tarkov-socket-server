@@ -9,17 +9,6 @@ const pingMessage = JSON.stringify({
     type: 'ping',
 });
 
-const sendCommand = (sessionID, command) => {
-    wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID) {
-            client.send(JSON.stringify({
-                type: 'command',
-                data: command
-            }));
-        }
-    });
-};
-
 const sendMessage = (sessionID, type, data) => {
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID) {
@@ -67,7 +56,7 @@ wss.on('connection', (ws, req) => {
         }
 
         if (message.type !== 'debug') {
-            console.log(message);
+            console.log(ws.sessionID, message);
         }
 
         if (message.type === 'connect') {
@@ -86,7 +75,7 @@ wss.on('connection', (ws, req) => {
         }
 
         if (message.type === 'command') {
-            sendCommand(sessionID, message.data);
+            sendMessage(sessionID, 'command', message.data);
 
             return;
         }
