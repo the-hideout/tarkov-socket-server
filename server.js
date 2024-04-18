@@ -11,7 +11,7 @@ const pingMessage = JSON.stringify({
 
 const sendCommand = (sessionID, command) => {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && (client.role === 'remote' || client.role === 'scanner')) {
+        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID) {
             client.send(JSON.stringify({
                 type: 'command',
                 data: command
@@ -22,7 +22,7 @@ const sendCommand = (sessionID, command) => {
 
 const sendMessage = (sessionID, type, data) => {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && (client.role === 'remote' || client.role === 'listener') ) {
+        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID) {
             client.send(JSON.stringify({
                 type: type,
                 data: data,
@@ -45,7 +45,15 @@ const pingInterval = setInterval(() => {
     });
 }, 30000);
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+    const url = new URL(`http://localhost${req.url}`);
+    ws.sessionID = url.searchParams.get('sessionid');
+
+    // in future when all clients send session id via search param,
+    // we can immediately terminate any clients that don't include it
+
+    console.log(`Client connected ${ws.sessionID || ''}`);
+
     ws.isAlive = true;
     ws.settings = {};
 
@@ -68,37 +76,16 @@ wss.on('connection', (ws) => {
                 return;
             }
             ws.sessionID = message.sessionID;
-            ws.role = message.role || 'remote';
-
-            if (message.role === 'listener') {
-                let values = false;
-                wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN && client.sessionID === ws.sessionID && client.role === 'scanner' ) {
-                        values = client.settings;
-                    }
-                });
-                if (values) {
-                    ws.send(JSON.stringify({
-                        type: 'scannerValues',
-                        data: values
-                    }));
-                }
-                sendCommand(ws.sessionID, 'log-history');
-            }
             return;
         }
 
-        const sessionID = message.sessionID || ws.sessionID;
+        const sessionID = message.sessionID;
         if (!sessionID) {
             console.log('No session ID set, dropping message', message);
             return;
         }
 
         if (message.type === 'command') {
-            if (ws.role !== 'remote' && message.password != process.env.WS_PASSWORD) {
-                sendMessage(sessionID, 'debug', 'Access denied');
-                return;
-            }
             sendCommand(sessionID, message.data);
 
             return;
@@ -109,94 +96,10 @@ wss.on('connection', (ws) => {
 
             return;
         }
+    });
 
-        if (message.type === 'setValues') {
-            let values = false;
-            if (ws.role === 'scanner') {
-                ws.settings = {
-                    ...ws.settings,
-                    ...message.data
-                };
-                values = ws.settings;
-            } else {
-                wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'scanner' ) {
-                        client.settings = {
-                            ...client.settings,
-                            ...message.data
-                        };
-                        values = client.settings;
-                    }
-                });
-            }
-            if (!values) {
-                console.log(`Could not find ${sessionID} scanner to set values`);
-                return;
-            }
-            console.log(`${sessionID} (${ws.role}): set values ${JSON.stringify(message.data, null, 4)}`);
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'listener' ) {
-                    client.send(JSON.stringify({
-                        type: 'scannerValues',
-                        data: values
-                    }));
-                    console.log(`sent scannerValues message to ${sessionID} listener`);
-                }
-            });
-
-            return;
-        }
-
-        if (message.type === 'getValue') {
-            let theValue = false;
-            if (ws.role === 'scanner') {
-                theValue = ws.settings[message.data.name];
-            } else {
-                wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'scanner' ) {
-                        theValue = client.settings[message.data.name];
-                    }
-                });
-            }
-            ws.send(JSON.stringify({
-                type: 'scannerValue',
-                data: theValue,
-            }));
-            console.log(`${sessionID} (${ws.role}): sent ${message.data.name} value ${theValue}`);
-
-            return;
-        }
-
-        if (message.type === 'getValues') {
-            let theValues = false;
-            if (ws.role === 'scanner') {
-                theValues = ws.settings;
-            } else {
-                wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'scanner' ) {
-                        theValues = client.settings;
-                    }
-                });
-            }
-            ws.send(JSON.stringify({
-                type: 'scannerValues',
-                data: theValues,
-            }));
-            console.log(`${sessionID} (${ws.role}): sent values ${theValues}`);
-
-            return;
-        }
-
-        if (message.type === 'logHistory') {
-            wss.clients.forEach((client) => {
-                if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID && client.role === 'listener' ) {
-                    client.send(JSON.stringify({
-                        type: 'logHistory',
-                        data: message.data
-                    }));
-                }
-            });
-        }
+    ws.on('close', () => {
+        console.log(`Client disconnected ${ws.sessionID}`);
     });
 });
 
