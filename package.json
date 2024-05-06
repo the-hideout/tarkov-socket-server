@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/kokarn/tarkov-socket-server#readme",
   "dependencies": {
-    "ws": "^8.16.0",
+    "ws": "^8.17.0",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
