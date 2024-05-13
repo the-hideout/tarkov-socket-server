@@ -5,10 +5,6 @@ const wss = new WebSocket.Server({
     port: process.env.PORT || 8080,
 });
 
-const pingMessage = JSON.stringify({
-    type: 'ping',
-});
-
 const sendMessage = (sessionID, type, data) => {
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID) {
@@ -24,13 +20,17 @@ const pingInterval = setInterval(() => {
     console.log(`active clients: ${wss.clients.size}`);
 
     wss.clients.forEach((client) => {
-        if (client.isAlive === false) {
+        // if ping is pending from last tick, no response was received
+        // so we terminate the connection
+        if (client.pingPending === true) {
             console.log(`terminating ${client.sessionID}`);
             return client.terminate();
         }
 
-        client.isAlive = false;
-        client.send(pingMessage);
+        client.pingPending = true;
+        client.send(JSON.stringify({
+            type: 'ping',
+        }));
     });
 }, 30000);
 
@@ -38,34 +38,28 @@ wss.on('connection', (ws, req) => {
     const url = new URL(`http://localhost${req.url}`);
     ws.sessionID = url.searchParams.get('sessionid');
 
-    // in future when all clients send session id via search param,
-    // we can immediately terminate any clients that don't include it
+    if (!ws.sessionID) {
+        console.log('Terminating connecting client missing sessionID');
+        client.terminate();
+        return;
+    }
 
-    console.log(`Client connected ${ws.sessionID || ''}`);
+    console.log(`Client connected ${ws.sessionID}`);
 
-    ws.isAlive = true;
+    ws.pingPending = false;
     ws.settings = {};
 
     ws.on('message', (rawMessage) => {
         const message = JSON.parse(rawMessage);
 
         if (message.type === 'pong') {
-            ws.isAlive = true;
+            ws.pingPending = false;
 
             return;
         }
 
         if (message.type !== 'debug') {
             console.log(ws.sessionID, message);
-        }
-
-        if (message.type === 'connect') {
-            if (!message.sessionID) {
-                console.log('No connect session ID provided; dropping message', message);
-                return;
-            }
-            ws.sessionID = message.sessionID;
-            return;
         }
 
         const sessionID = message.sessionID;
