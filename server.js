@@ -40,7 +40,7 @@ wss.on('connection', (ws, req) => {
 
     if (!ws.sessionID) {
         console.log('Terminating connecting client missing sessionID');
-        client.terminate();
+        ws.terminate();
         return;
     }
 
