@@ -1,7 +1,9 @@
-require('dotenv').config();
-const WebSocket = require('ws');
+import dotenv from 'dotenv';
+import WebSocket, { WebSocketServer } from 'ws';
 
-const wss = new WebSocket.Server({
+dotenv.config();
+
+const wss = new WebSocketServer({
     port: process.env.PORT || 8080,
 });
 
@@ -39,7 +41,7 @@ wss.on('connection', (ws, req) => {
     ws.sessionID = url.searchParams.get('sessionid');
 
     if (!ws.sessionID) {
-        console.log('Terminating connecting client missing sessionID');
+        //console.log('Terminating connecting client missing sessionID');
         ws.terminate();
         return;
     }
