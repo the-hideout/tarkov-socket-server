@@ -40,7 +40,7 @@ wss.on('connection', (ws, req) => {
     const url = new URL(`http://localhost${req.url}`);
     ws.sessionID = url.searchParams.get('sessionid');
     ws.remoteAddress = req.headers['x-forwarded-for'] 
-        ? req.headers['x-forwarded-for'].split(',')[0].trim()
+        ? req.headers['x-forwarded-for']
         : req.socket.remoteAddress;
 
     if (!ws.sessionID) {
@@ -49,7 +49,7 @@ wss.on('connection', (ws, req) => {
         return;
     }
 
-    console.log(`Client connected ${ws.sessionID}`);
+    console.log(`Client connected ${ws.sessionID} from ${req.headers.origin}`);
 
     ws.pingPending = false;
     ws.settings = {};
