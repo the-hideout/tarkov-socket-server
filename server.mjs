@@ -25,7 +25,7 @@ const pingInterval = setInterval(() => {
         // if ping is pending from last tick, no response was received
         // so we terminate the connection
         if (client.pingPending === true) {
-            console.log(`terminating ${client.sessionID}`);
+            console.log(`terminating ${client.sessionID} ${req.socket.remoteAddress}`);
             return client.terminate();
         }
 
@@ -39,6 +39,7 @@ const pingInterval = setInterval(() => {
 wss.on('connection', (ws, req) => {
     const url = new URL(`http://localhost${req.url}`);
     ws.sessionID = url.searchParams.get('sessionid');
+    ws.address = req.socket.remoteAddress;
 
     if (!ws.sessionID) {
         //console.log('Terminating connecting client missing sessionID');
