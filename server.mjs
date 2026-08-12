@@ -25,7 +25,7 @@ const pingInterval = setInterval(() => {
         // if ping is pending from last tick, no response was received
         // so we terminate the connection
         if (client.pingPending === true) {
-            console.log(`terminating ${client.sessionID}`);
+            console.log(`terminating ${client.sessionID} ${client.remoteAddress}`);
             return client.terminate();
         }
 
@@ -39,6 +39,7 @@ const pingInterval = setInterval(() => {
 wss.on('connection', (ws, req) => {
     const url = new URL(`http://localhost${req.url}`);
     ws.sessionID = url.searchParams.get('sessionid');
+    ws.remoteAddress = req.socket.remoteAddress;
 
     if (!ws.sessionID) {
         //console.log('Terminating connecting client missing sessionID');
@@ -52,7 +53,13 @@ wss.on('connection', (ws, req) => {
     ws.settings = {};
 
     ws.on('message', (rawMessage) => {
-        const message = JSON.parse(rawMessage);
+        let message;
+        try {
+            message = JSON.parse(rawMessage);
+        } catch (error) {
+            console.error(`Error parsing message ${ws.sessionID} ${ws.remoteAddress}`, rawMessage.toString());
+            return;
+        }
 
         if (message.type === 'pong') {
             ws.pingPending = false;
@@ -81,6 +88,8 @@ wss.on('connection', (ws, req) => {
 
             return;
         }
+
+        console.warn(`Unrecognized message type ${ws.sessionID} ${ws.remoteAddress}`, message);
     });
 
     ws.on('close', () => {
