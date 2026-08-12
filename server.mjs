@@ -39,7 +39,9 @@ const pingInterval = setInterval(() => {
 wss.on('connection', (ws, req) => {
     const url = new URL(`http://localhost${req.url}`);
     ws.sessionID = url.searchParams.get('sessionid');
-    ws.remoteAddress = req.socket.remoteAddress;
+    ws.remoteAddress = req.headers['x-forwarded-for'] 
+        ? req.headers['x-forwarded-for'].split(',')[0].trim()
+        : req.socket.remoteAddress;
 
     if (!ws.sessionID) {
         //console.log('Terminating connecting client missing sessionID');
