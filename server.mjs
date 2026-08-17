@@ -55,10 +55,10 @@ wss.on('connection', (ws, req) => {
         return;
     }
 
-    /*if (!req.headers.origin) {
+    if (process.env.REQUIRE_ORIGIN === 'true' && !req.headers.origin) {
         ws.terminate();
         return;
-    }*/
+    }
 
     if (!req.headers.origin?.startsWith('http')) {
         ws.nativePing = true;
