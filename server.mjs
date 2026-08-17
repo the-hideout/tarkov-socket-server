@@ -1,7 +1,4 @@
-import dotenv from 'dotenv';
 import WebSocket, { WebSocketServer } from 'ws';
-
-dotenv.config();
 
 const wss = new WebSocketServer({
     port: process.env.PORT || 8080,
@@ -9,12 +6,16 @@ const wss = new WebSocketServer({
 
 const sendMessage = (sessionID, type, data) => {
     wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN && client.sessionID === sessionID) {
-            client.send(JSON.stringify({
-                type: type,
-                data: data,
-            }));
+        if (client.readyState !== WebSocket.OPEN) {
+            return;
         }
+        if (client.sessionID !== sessionID) {
+            return;
+        }
+        client.send(JSON.stringify({
+            type: type,
+            data: data,
+        }));
     });
 };
 
@@ -24,12 +25,17 @@ const pingInterval = setInterval(() => {
     wss.clients.forEach((client) => {
         // if ping is pending from last tick, no response was received
         // so we terminate the connection
-        if (client.pingPending === true) {
+        if (client.isAlive === false) {
             console.log(`terminating ${client.sessionID} ${client.remoteAddress}`);
-            return client.terminate();
+            client.terminate();
+            return;
         }
 
-        client.pingPending = true;
+        client.isAlive = false;
+        if (client.nativePing) {
+            client.ping();
+            return;
+        }
         client.send(JSON.stringify({
             type: 'ping',
         }));
@@ -39,9 +45,9 @@ const pingInterval = setInterval(() => {
 wss.on('connection', (ws, req) => {
     const url = new URL(`http://localhost${req.url}`);
     ws.sessionID = url.searchParams.get('sessionid');
-    ws.remoteAddress = req.headers['x-forwarded-for'] 
-        ? req.headers['x-forwarded-for']
-        : req.socket.remoteAddress;
+    ws.remoteAddress = req.headers['cf-connecting-ip']
+        ?? req.headers['x-forwarded-for']
+        ?? req.socket.remoteAddress;
 
     if (!ws.sessionID) {
         //console.log('Terminating connecting client missing sessionID');
@@ -49,10 +55,23 @@ wss.on('connection', (ws, req) => {
         return;
     }
 
+    /*if (!req.headers.origin) {
+        ws.terminate();
+        return;
+    }*/
+
+    if (!req.headers.origin?.startsWith('http')) {
+        ws.nativePing = true;
+    }
+
     console.log(`Client connected ${ws.sessionID} from ${req.headers.origin}`);
 
-    ws.pingPending = false;
+    ws.isAlive = true;
     ws.settings = {};
+
+    ws.on('pong', () => {
+        ws.isAlive = true;
+    });
 
     ws.on('message', (rawMessage) => {
         let message;
@@ -64,8 +83,7 @@ wss.on('connection', (ws, req) => {
         }
 
         if (message.type === 'pong') {
-            ws.pingPending = false;
-
+            ws.isAlive = true;
             return;
         }
 
@@ -81,17 +99,19 @@ wss.on('connection', (ws, req) => {
 
         if (message.type === 'command') {
             sendMessage(sessionID, 'command', message.data);
-
             return;
         }
 
         if (message.type === 'debug') {
             sendMessage(sessionID, 'debug', message.data);
-
             return;
         }
 
         console.warn(`Unrecognized message type ${ws.sessionID} ${ws.remoteAddress}`, message);
+    });
+
+    ws.on('error', (error) => {
+        console.error(`Client error ${ws.sessionID} ${ws.remoteAddress}`, error.stack);
     });
 
     ws.on('close', () => {
