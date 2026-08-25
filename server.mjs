@@ -38,14 +38,14 @@ const sendMessage = (sessionID, type, data) => {
 };
 
 const pingInterval = setInterval(() => {
-    console.log(`active clients: ${wss.clients.size}`);
+    console.info(`active clients: ${wss.clients.size}`);
     const liveSessions = new Set();
 
     wss.clients.forEach((client) => {
         // if ping is pending from last tick, no response was received
         // so we terminate the connection
         if (client.isAlive === false) {
-            console.log(`terminating ${client.sessionID} ${client.remoteAddress}${client.origin ? ` via ${client.origin}` : ''}`);
+            console.warn(`Terminating ${client.sessionID} ${client.remoteAddress}${client.origin ? ` via ${client.origin}` : ''}`);
             client.terminate();
             return;
         }
@@ -81,7 +81,7 @@ wss.on('connection', (ws, req) => {
         ?? req.socket.remoteAddress;
     ws.origin = req.headers.origin;
     if (!ws.sessionID) {
-        //console.log('Terminating connecting client missing sessionID');
+        //console.warn('Terminating connecting client missing sessionID');
         ws.terminate();
         return;
     }
@@ -95,7 +95,7 @@ wss.on('connection', (ws, req) => {
         ws.nativePing = true;
     }
     addToSession(ws);
-    console.log(`Client connected ${ws.sessionID} from ${req.headers.origin}`);
+    console.info(`Client connected ${ws.sessionID} from ${req.headers.origin}`);
 
     ws.isAlive = true;
     ws.settings = {};
@@ -120,9 +120,7 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
-        /*if (message.type !== 'debug') {
-            console.log(`${ws.sessionID} sent: ${stringMessage}`);
-        }*/
+        console.debug(`${ws.sessionID} sent: ${stringMessage}`);
 
         const sessionID = message.sessionID;
         if (!sessionID) {
@@ -151,7 +149,7 @@ wss.on('connection', (ws, req) => {
 
     ws.on('close', () => {
         removeFromSession(ws);
-        console.log(`Client disconnected ${ws.sessionID}`);
+        console.info(`Client disconnected ${ws.sessionID}`);
     });
 });
 
