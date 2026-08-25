@@ -4,72 +4,41 @@ const wss = new WebSocketServer({
     port: process.env.PORT || 8080,
 });
 
-// track clients by session id
-const sessionClients = new Map();
-
-function addToSession(ws) {
-    if (!sessionClients.has(ws.sessionID)) {
-        sessionClients.set(ws.sessionID, new Set());
-    }
-    sessionClients.get(ws.sessionID).add(ws);
-}
-
-function removeFromSession(ws) {
-    const set = sessionClients.get(ws.sessionID);
-    if (!set) {
-        return;
-    }
-    set.delete(ws);
-    if (set.size === 0) {
-        sessionClients.delete(ws.sessionID); // important: prune empty entries
-    }
-}
-
 const sendMessage = (sessionID, type, data) => {
-    const clients = sessionClients.get(sessionID);
-    if (!clients) return;
-    const payload = JSON.stringify({ type, data });
-    clients.forEach((client) => {
+    wss.clients.forEach((client) => {
         if (client.readyState !== WebSocket.OPEN) {
             return;
         }
-        client.send(payload);
+        if (client.sessionID !== sessionID) {
+            return;
+        }
+        client.send(JSON.stringify({
+            type: type,
+            data: data,
+        }));
     });
 };
 
 const pingInterval = setInterval(() => {
     console.info(`active clients: ${wss.clients.size}`);
-    const liveSessions = new Set();
 
     wss.clients.forEach((client) => {
         // if ping is pending from last tick, no response was received
         // so we terminate the connection
         if (client.isAlive === false) {
-            console.warn(`Terminating ${client.sessionID} ${client.remoteAddress}${client.origin ? ` via ${client.origin}` : ''}`);
+            console.info(`terminating ${client.sessionID} ${client.remoteAddress}`);
             client.terminate();
             return;
         }
-        liveSessions.add(client);
+
         client.isAlive = false;
         if (client.nativePing) {
             client.ping();
             return;
-        } else {
-            client.send(JSON.stringify({
-                type: 'ping',
-            }));
         }
-        // prune anything in sessionClients that's no longer in wss.clients
-        for (const [sessionID, clientSet] of sessionClients) {
-            for (const client of clientSet) {
-                if (!liveSessions.has(client)) {
-                    clientSet.delete(client);
-                }
-            }
-            if (clientSet.size === 0) {
-                sessionClients.delete(sessionID);
-            }
-        }
+        client.send(JSON.stringify({
+            type: 'ping',
+        }));
     });
 }, 30000);
 
@@ -94,7 +63,7 @@ wss.on('connection', (ws, req) => {
     if (!req.headers.origin?.startsWith('http')) {
         ws.nativePing = true;
     }
-    addToSession(ws);
+
     console.info(`Client connected ${ws.sessionID} from ${req.headers.origin}`);
 
     ws.isAlive = true;
@@ -109,11 +78,10 @@ wss.on('connection', (ws, req) => {
         try {
             message = JSON.parse(rawMessage);
         } catch (error) {
-            console.error(`Error parsing message ${ws.sessionID} ${ws.remoteAddress}`, stringMessage);
+            console.error(`Error parsing message ${ws.sessionID} ${ws.remoteAddress}: ${rawMessage.toString()}`);
             return;
         }
         let stringMessage = JSON.stringify(message);
-
 
         if (message.type === 'pong') {
             ws.isAlive = true;
@@ -142,13 +110,10 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('error', (error) => {
-        removeFromSession(ws);
-        ws.terminate();
         console.error(`Client error ${ws.sessionID} ${ws.remoteAddress}`, error.stack);
     });
 
     ws.on('close', () => {
-        removeFromSession(ws);
         console.info(`Client disconnected ${ws.sessionID}`);
     });
 });
