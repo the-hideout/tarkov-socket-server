@@ -26,7 +26,7 @@ const pingInterval = setInterval(() => {
         // if ping is pending from last tick, no response was received
         // so we terminate the connection
         if (client.isAlive === false) {
-            console.info(`terminating ${client.sessionID} ${client.remoteAddress}`);
+            console.warn(`Terminating ${client.sessionID} ${client.remoteAddress}${client.origin ? ` via ${client.origin}` : ''}`);
             client.terminate();
             return;
         }
