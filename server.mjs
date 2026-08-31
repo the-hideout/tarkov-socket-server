@@ -64,7 +64,7 @@ wss.on('connection', (ws, req) => {
         ws.nativePing = true;
     }
 
-    console.info(`Client connected ${ws.sessionID} from ${req.headers.origin}`);
+    console.info(`Client connected ${req.headers.host} ${ws.sessionID} from ${ws.remoteAddress} ${ws.origin}`);
 
     ws.isAlive = true;
     ws.settings = {};
@@ -92,7 +92,7 @@ wss.on('connection', (ws, req) => {
 
         const sessionID = message.sessionID;
         if (!sessionID) {
-            console.warn(`${ws.sessionID}, sent missing sessionID: ${stringMessage}`);
+            console.warn(`${ws.sessionID} ${ws.remoteAddress}, sent missing sessionID: ${stringMessage}`);
             return;
         }
 
