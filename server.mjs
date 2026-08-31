@@ -50,13 +50,20 @@ wss.on('connection', (ws, req) => {
         ?? req.socket.remoteAddress;
     ws.origin = req.headers.origin;
     if (!ws.sessionID) {
-        //console.warn('Terminating connecting client missing sessionID');
+        console.warn(`Terminated connection to ${req.headers.host} missing sessionID: ${ws.sessionID} from ${ws.remoteAddress}`);
         ws.terminate();
         return;
     }
 
     if (process.env.REQUIRE_ORIGIN === 'true' && !req.headers.origin) {
         ws.terminate();
+        console.warn(`Terminated connection to ${req.headers.host} missing origin header: ${ws.sessionID} from ${ws.remoteAddress}`);
+        return;
+    }
+
+    if (process.env.FORCE_HOST && req.headers.host !== process.env.FORCE_HOST) {
+        ws.terminate();
+        console.warn(`Terminated connection to invalid host ${req.headers.host}: ${ws.sessionID} from ${ws.remoteAddress}`);
         return;
     }
 
