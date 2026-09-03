@@ -4,6 +4,9 @@ const wss = new WebSocketServer({
     port: process.env.PORT || 8080,
 });
 
+const originFilters = JSON.parse(process.env.ORIGIN_FILTER ?? '[]').map(str => new RegExp(str));
+
+
 const sendMessage = (sessionID, type, data) => {
     wss.clients.forEach((client) => {
         if (client.readyState !== WebSocket.OPEN) {
@@ -59,6 +62,17 @@ wss.on('connection', (ws, req) => {
         ws.terminate();
         console.warn(`Terminated connection to ${req.headers.host} missing origin header: ${ws.sessionID} from ${ws.remoteAddress}`);
         return;
+    }
+
+    if (ws.origin) {
+        for (const rx of originFilters) {
+            if (!ws.origin.match(rx)) {
+                continue;
+            }
+            ws.terminate();
+            console.warn(`Terminated connection to ${req.headers.host} filtered origin ${rx}: ${ws.sessionID} from ${ws.remoteAddress}`);
+            return;
+        }
     }
 
     if (process.env.FORCE_HOST && req.headers.host !== process.env.FORCE_HOST) {

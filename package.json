@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.mjs",
-    "dev": "nodemon dev.mjs"
+    "dev": "nodemon --env-file=.env server.mjs"
   },
   "repository": {
     "type": "git",
@@ -23,7 +23,6 @@
     "ws": "^8.21.3"
   },
   "devDependencies": {
-    "dotenv": "^17.4.2",
     "nodemon": "^3.1.14"
   }
 }
