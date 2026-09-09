@@ -22,6 +22,20 @@ const sendMessage = (sessionID, type, data) => {
     });
 };
 
+const checkConnected = (sessionID, returnID) => {
+    for (const client of wss.clients) {
+        if (client.readyState !== WebSocket.OPEN) {
+            continue;
+        }
+        if (client.sessionID !== sessionID) {
+            continue;
+        }
+        sendMessage(returnID, 'connectionStatus', {connected: true});
+        return;
+    }
+    sendMessage(returnID, 'connectionStatus', {connected: false});
+};
+
 const pingInterval = setInterval(() => {
     console.info(`active clients: ${wss.clients.size}`);
 
@@ -119,6 +133,15 @@ wss.on('connection', (ws, req) => {
 
         if (message.type === 'command') {
             sendMessage(sessionID, 'command', message.data);
+            return;
+        }
+
+        if (message.type === 'isConnected') {
+            if (!ws.sessionID.startsWith(sessionID)) {
+                console.warn(`${ws.sessionID} ${ws.remoteAddress}, requested restricted connection status: ${stringMessage}`);
+                return;
+            }
+            checkConnected(sessionID, ws.sessionID);
             return;
         }
 
